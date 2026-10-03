@@ -28,6 +28,8 @@ jobs:
             ros-jazzy-ros2-controllers \
             ros-jazzy-xacro
           source /opt/ros/jazzy/setup.bash
+          sudo rosdep init 2>/dev/null || true
+          rosdep update
           rosdep install --from-paths src --ignore-src -r -y --rosdistro jazzy
 
       - name: Validate repository and Xacro
@@ -61,4 +63,3 @@ jobs:
           fi
           grep -q "Configured and activated hand_controller" /tmp/sabre_launch.log
           grep -q "Configured and activated joint_state_broadcaster" /tmp/sabre_launch.log
-
