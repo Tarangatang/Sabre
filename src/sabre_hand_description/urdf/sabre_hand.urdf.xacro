@@ -1,0 +1,118 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="sabre_hand">
+  <xacro:arg name="controller_config" default=""/>
+
+  <material name="sabre_blue"><color rgba="0.08 0.30 0.55 1"/></material>
+  <material name="joint_dark"><color rgba="0.08 0.09 0.11 1"/></material>
+
+  <xacro:macro name="box_inertial" params="mass x y z">
+    <inertial>
+      <mass value="${mass}"/>
+      <inertia
+        ixx="${mass * (y*y + z*z) / 12.0}" ixy="0" ixz="0"
+        iyy="${mass * (x*x + z*z) / 12.0}" iyz="0"
+        izz="${mass * (x*x + y*y) / 12.0}"/>
+    </inertial>
+  </xacro:macro>
+
+  <xacro:macro name="finger" params="name x y yaw scale:=1.0">
+    <link name="${name}_proximal">
+      <visual>
+        <origin xyz="0 0 ${0.025 * scale}"/>
+        <geometry><box size="${0.018 * scale} ${0.020 * scale} ${0.050 * scale}"/></geometry>
+        <material name="sabre_blue"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 ${0.025 * scale}"/>
+        <geometry><box size="${0.018 * scale} ${0.020 * scale} ${0.050 * scale}"/></geometry>
+      </collision>
+      <xacro:box_inertial mass="0.025" x="${0.018 * scale}" y="${0.020 * scale}" z="${0.050 * scale}"/>
+    </link>
+    <joint name="${name}_joint_1" type="revolute">
+      <parent link="palm"/><child link="${name}_proximal"/>
+      <origin xyz="${x} ${y} 0.055" rpy="0 0 ${yaw}"/>
+      <axis xyz="0 1 0"/><limit lower="0" upper="1.45" effort="4" velocity="3"/>
+      <dynamics damping="0.08" friction="0.02"/>
+    </joint>
+
+    <link name="${name}_middle">
+      <visual>
+        <origin xyz="0 0 ${0.020 * scale}"/>
+        <geometry><box size="${0.016 * scale} ${0.018 * scale} ${0.040 * scale}"/></geometry>
+        <material name="sabre_blue"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 ${0.020 * scale}"/>
+        <geometry><box size="${0.016 * scale} ${0.018 * scale} ${0.040 * scale}"/></geometry>
+      </collision>
+      <xacro:box_inertial mass="0.018" x="${0.016 * scale}" y="${0.018 * scale}" z="${0.040 * scale}"/>
+    </link>
+    <joint name="${name}_joint_2" type="revolute">
+      <parent link="${name}_proximal"/><child link="${name}_middle"/>
+      <origin xyz="0 0 ${0.050 * scale}"/>
+      <axis xyz="0 1 0"/><limit lower="0" upper="1.57" effort="3" velocity="3"/>
+      <dynamics damping="0.08" friction="0.02"/>
+    </joint>
+
+    <link name="${name}_distal">
+      <visual>
+        <origin xyz="0 0 ${0.015 * scale}"/>
+        <geometry><box size="${0.014 * scale} ${0.016 * scale} ${0.030 * scale}"/></geometry>
+        <material name="sabre_blue"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 ${0.015 * scale}"/>
+        <geometry><box size="${0.014 * scale} ${0.016 * scale} ${0.030 * scale}"/></geometry>
+      </collision>
+      <xacro:box_inertial mass="0.012" x="${0.014 * scale}" y="${0.016 * scale}" z="${0.030 * scale}"/>
+    </link>
+    <joint name="${name}_joint_3" type="revolute">
+      <parent link="${name}_middle"/><child link="${name}_distal"/>
+      <origin xyz="0 0 ${0.040 * scale}"/>
+      <axis xyz="0 1 0"/><limit lower="0" upper="1.57" effort="2" velocity="3"/>
+      <dynamics damping="0.08" friction="0.02"/>
+    </joint>
+  </xacro:macro>
+
+  <link name="world"/>
+  <link name="palm">
+    <visual>
+      <geometry><box size="0.105 0.090 0.030"/></geometry>
+      <material name="sabre_blue"/>
+    </visual>
+    <collision><geometry><box size="0.105 0.090 0.030"/></geometry></collision>
+    <xacro:box_inertial mass="0.35" x="0.105" y="0.090" z="0.030"/>
+  </link>
+  <joint name="world_to_palm" type="fixed">
+    <parent link="world"/><child link="palm"/>
+    <origin xyz="0 0 0.25" rpy="0 0 0"/>
+  </joint>
+
+  <xacro:finger name="thumb"  x="-0.052" y="-0.030" yaw="-0.65" scale="0.82"/>
+  <xacro:finger name="index"  x="-0.036" y="0.000"  yaw="0.00"  scale="0.95"/>
+  <xacro:finger name="middle" x="-0.012" y="0.000"  yaw="0.00"  scale="1.05"/>
+  <xacro:finger name="ring"   x="0.014"  y="0.000"  yaw="0.00"  scale="1.00"/>
+  <xacro:finger name="little" x="0.038"  y="0.000"  yaw="0.00"  scale="0.86"/>
+
+  <ros2_control name="GazeboSystem" type="system">
+    <hardware><plugin>gz_ros2_control/GazeboSimSystem</plugin></hardware>
+    <xacro:macro name="controlled_joint" params="joint">
+      <joint name="${joint}">
+        <command_interface name="position"><param name="min">0.0</param><param name="max">1.57</param></command_interface>
+        <state_interface name="position"/><state_interface name="velocity"/>
+      </joint>
+    </xacro:macro>
+    <xacro:controlled_joint joint="thumb_joint_1"/><xacro:controlled_joint joint="thumb_joint_2"/><xacro:controlled_joint joint="thumb_joint_3"/>
+    <xacro:controlled_joint joint="index_joint_1"/><xacro:controlled_joint joint="index_joint_2"/><xacro:controlled_joint joint="index_joint_3"/>
+    <xacro:controlled_joint joint="middle_joint_1"/><xacro:controlled_joint joint="middle_joint_2"/><xacro:controlled_joint joint="middle_joint_3"/>
+    <xacro:controlled_joint joint="ring_joint_1"/><xacro:controlled_joint joint="ring_joint_2"/><xacro:controlled_joint joint="ring_joint_3"/>
+    <xacro:controlled_joint joint="little_joint_1"/><xacro:controlled_joint joint="little_joint_2"/><xacro:controlled_joint joint="little_joint_3"/>
+  </ros2_control>
+
+  <gazebo>
+    <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+      <parameters>$(arg controller_config)</parameters>
+    </plugin>
+  </gazebo>
+</robot>
+
