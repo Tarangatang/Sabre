@@ -9,6 +9,7 @@ from launch.actions import (
     ExecuteProcess,
     IncludeLaunchDescription,
     RegisterEventHandler,
+    SetEnvironmentVariable,
 )
 from launch.conditions import IfCondition, UnlessCondition
 from launch.event_handlers import OnProcessExit
@@ -29,6 +30,7 @@ def generate_launch_description():
 
     gui = LaunchConfiguration("gui")
     paused = LaunchConfiguration("paused")
+    demo = LaunchConfiguration("demo")
 
     robot_description = ParameterValue(
         Command([
@@ -36,6 +38,10 @@ def generate_launch_description():
             " controller_config:=", str(controllers),
         ]),
         value_type=str,
+    )
+
+    gazebo_resource_path = SetEnvironmentVariable(
+        "GZ_SIM_RESOURCE_PATH", str(description_share.parent)
     )
 
     robot_state_publisher = Node(
@@ -79,8 +85,25 @@ def generate_launch_description():
     hand_controller = Node(
         package="controller_manager",
         executable="spawner",
-        arguments=["hand_controller", "--controller-manager", "/controller_manager"],
+        arguments=[
+            "hand_controller", "--controller-manager", "/controller_manager",
+            "--controller-manager-timeout", "120",
+        ],
         output="screen",
+    )
+
+    commander = Node(
+        package="sabre_hand_control",
+        executable="hand_commander",
+        output="screen",
+        parameters=[{"use_sim_time": True}],
+    )
+    hand_demo = Node(
+        package="sabre_hand_control",
+        executable="hand_demo",
+        output="screen",
+        parameters=[{"use_sim_time": True}],
+        condition=IfCondition(demo),
     )
 
     pause_world = ExecuteProcess(
@@ -105,12 +128,19 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument("gui", default_value="true", description="Open Gazebo's GUI"),
         DeclareLaunchArgument(
+            "demo", default_value="true",
+            description="Cycle through working hand poses automatically",
+        ),
+        DeclareLaunchArgument(
             "paused", default_value="false",
             description="Pause physics shortly after Gazebo starts",
         ),
+        gazebo_resource_path,
         gazebo_gui,
         gazebo_headless,
         robot_state_publisher,
+        commander,
+        hand_demo,
         clock_bridge,
         spawn_hand,
         start_after_spawn,

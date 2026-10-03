@@ -1,113 +1,115 @@
 # SABRE robotic hand simulation
 
-This repository contains a ROS 2/Gazebo starter simulation for a five-finger,
-15-joint robotic hand. The control path uses standard ROS 2 messages and a
-`joint_trajectory_controller`, so the same C++ behaviour node can command the
-simulator now and a real `ros2_control` hardware interface later.
+SABRE is a ROS 2 Jazzy and Gazebo Harmonic simulation of a realistic,
+16-joint robotic hand. It uses the open-source Allegro Hand CAD geometry from
+[PAL Robotics](https://github.com/pal-robotics/allegro_hand), integrated with
+`gz_ros2_control` and reusable C++ command code.
 
-## Target platform
+![Expected Allegro hand model](docs/allegro_hand_reference.png)
 
-- Ubuntu 24.04
-- ROS 2 Jazzy
-- Gazebo Harmonic
-- `gz_ros2_control`
+The simulator and a future physical hand use the same ROS interface:
 
-ROS 2 Jazzy is not natively supported on macOS. Develop on Ubuntu 24.04 (a VM
-is fine on Apple Silicon) or use a Linux ROS workstation.
-
-## Install dependencies
-
-```bash
-sudo apt update
-sudo apt install \
-  ros-jazzy-desktop \
-  ros-jazzy-ros-gz \
-  ros-jazzy-gz-ros2-control \
-  ros-jazzy-ros2-controllers \
-  ros-jazzy-xacro \
-  python3-colcon-common-extensions
+```text
+/hand/target_joint_states -> hand_commander -> /hand_controller/joint_trajectory
 ```
 
-## Build
+## Mac users: read this first
 
-Run from the repository root:
+The complete stack does **not** run reliably as a native macOS application.
+ROS 2 Jazzy only provides Tier 3 source support for Intel macOS, while this
+project also needs `ros2_control` and `gz_ros2_control`. On an Apple Silicon
+Mac, use an **Ubuntu 24.04 ARM64 virtual machine**.
+
+Recommended VM configuration:
+
+- Ubuntu Desktop 24.04 ARM64
+- 4 CPU cores minimum
+- 8 GB RAM minimum (12 GB is better if the Mac has enough memory)
+- 40 GB disk
+- 3D acceleration enabled when the VM application offers it
+
+UTM is the free option. Parallels generally provides smoother 3D graphics but
+is paid. Do not run the commands below in the normal macOS Terminal; run them
+in the Ubuntu VM terminal.
+
+## Install and run
+
+Inside Ubuntu 24.04:
+
+```bash
+git clone https://github.com/Tarangatang/Sabre.git
+cd Sabre
+./scripts/install_ubuntu.sh
+./scripts/build.sh
+./scripts/run_demo.sh
+```
+
+The last command opens Gazebo and automatically cycles through open, relaxed,
+fist, pinch, and pointing poses. There is no second terminal required for the
+demo.
+
+The dependency installer is intentionally limited to Ubuntu 24.04. It exits
+with a clear message on macOS or an unsupported Linux version instead of
+partially installing an incompatible stack.
+
+## Manual control
+
+Start the simulator without the automatic pose cycle:
 
 ```bash
 source /opt/ros/jazzy/setup.bash
-rosdep install --from-paths src --ignore-src -r -y
-colcon build --symlink-install
 source install/setup.bash
-colcon test --event-handlers console_direct+
-colcon test-result --verbose
+ros2 launch sabre_hand_bringup simulation.launch.py demo:=false
 ```
 
-## Run
-
-Terminal 1 launches Gazebo, the hand, and its controllers:
+In a second Ubuntu terminal:
 
 ```bash
-source /opt/ros/jazzy/setup.bash
-source install/setup.bash
-ros2 launch sabre_hand_bringup simulation.launch.py
-```
-
-Terminal 2 can command named poses:
-
-```bash
+cd Sabre
 source /opt/ros/jazzy/setup.bash
 source install/setup.bash
 ros2 run sabre_hand_control hand_commander --ros-args -p preset:=fist
 ros2 run sabre_hand_control hand_commander --ros-args -p preset:=open
 ros2 run sabre_hand_control hand_commander --ros-args -p preset:=pinch
+ros2 run sabre_hand_control hand_commander --ros-args -p preset:=point
 ```
 
-Or run a continuous demonstration:
+Each preset command publishes once and exits. To command selected joints from
+your own code, publish a `sensor_msgs/msg/JointState` to
+`/hand/target_joint_states`. The C++ commander retains unmentioned targets,
+rejects unknown joints, and clamps commands to the model's physical limits.
+
+## Diagnose an installation
 
 ```bash
-ros2 run sabre_hand_control hand_demo
+./scripts/doctor.sh
 ```
 
-For programmatic control, publish any subset of joints. The commander retains
-the other targets and clamps unsafe angles:
+It checks the operating system and confirms that ROS 2, Colcon, Gazebo, Xacro,
+and the Jazzy installation are available.
 
-```bash
-ros2 topic pub --once /hand/target_joint_states sensor_msgs/msg/JointState \
-  "{name: [index_joint_1, index_joint_2, index_joint_3], position: [0.7, 1.0, 0.8]}"
-```
+## Physical-hand reuse
 
-## Reusing control code on the physical hand
-
-`hand_commander` only publishes a standard
-`trajectory_msgs/msg/JointTrajectory` to
-`/hand_controller/joint_trajectory`. It has no Gazebo-specific code. For the
-real hand, implement a `ros2_control` hardware plugin exposing these same 15
-position-command joints and load the same controller YAML. The behaviour node,
-joint names, poses, and command topic then remain unchanged.
-
-The simulated joints are:
-
-- `thumb_joint_1` through `thumb_joint_3`
-- `index_joint_1` through `index_joint_3`
-- `middle_joint_1` through `middle_joint_3`
-- `ring_joint_1` through `ring_joint_3`
-- `little_joint_1` through `little_joint_3`
-
-## Useful launch options
-
-```bash
-# Start Gazebo paused
-ros2 launch sabre_hand_bringup simulation.launch.py paused:=true
-
-# Do not open the Gazebo GUI
-ros2 launch sabre_hand_bringup simulation.launch.py gui:=false
-```
+The C++ pose and validation code is independent of Gazebo. A real hand needs a
+`ros2_control` hardware plugin that exposes the same 16 position-command
+joints. Once that adapter exists, the behaviour nodes and command topic do not
+change. If your physical hand is not an Allegro-compatible design, its exact
+joint names, limits, and transmission ratios must be substituted before using
+this code on hardware.
 
 ## Project layout
 
 ```text
-src/
-  sabre_hand_description/  # Xacro/URDF model and Gazebo world
-  sabre_hand_control/      # Reusable C++ command and pose library
-  sabre_hand_bringup/      # ros2_control config and launch files
-tools/smoke_check.py       # Dependency-free project structure/XML checks
+scripts/                       Ubuntu install, build, run, and diagnostic tools
+src/sabre_hand_description/    Allegro meshes, Xacro model, world, RViz config
+src/sabre_hand_control/        Reusable C++ pose and command library
+src/sabre_hand_bringup/        Jazzy/Harmonic launch and controller config
+third_party/allegro_hand/      Upstream attribution and Apache-2.0 licence
+tools/smoke_check.py           Dependency-free repository consistency checks
 ```
+
+## Third-party model
+
+The Allegro Hand visual meshes and adapted URDF geometry are copyright 2024
+PAL Robotics S.L. and distributed under Apache License 2.0. See
+`third_party/allegro_hand/NOTICE` and `third_party/allegro_hand/LICENSE`.

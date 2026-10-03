@@ -11,21 +11,22 @@ controller_manager:
 hand_controller:
   ros__parameters:
     joints:
-      - thumb_joint_1
-      - thumb_joint_2
-      - thumb_joint_3
-      - index_joint_1
-      - index_joint_2
-      - index_joint_3
-      - middle_joint_1
-      - middle_joint_2
-      - middle_joint_3
-      - ring_joint_1
-      - ring_joint_2
-      - ring_joint_3
-      - little_joint_1
-      - little_joint_2
-      - little_joint_3
+      - sabre_finger_1_rotatory_joint
+      - sabre_finger_1_flexor_1_joint
+      - sabre_finger_1_flexor_2_joint
+      - sabre_finger_1_flexor_3_joint
+      - sabre_finger_2_rotatory_joint
+      - sabre_finger_2_flexor_1_joint
+      - sabre_finger_2_flexor_2_joint
+      - sabre_finger_2_flexor_3_joint
+      - sabre_finger_3_rotatory_joint
+      - sabre_finger_3_flexor_1_joint
+      - sabre_finger_3_flexor_2_joint
+      - sabre_finger_3_flexor_3_joint
+      - sabre_thumb_rotatory_joint
+      - sabre_thumb_flexor_1_joint
+      - sabre_thumb_flexor_2_joint
+      - sabre_thumb_flexor_3_joint
     command_interfaces:
       - position
     state_interfaces:
@@ -37,4 +38,3 @@ hand_controller:
     constraints:
       stopped_velocity_tolerance: 0.05
       goal_time: 1.0
-

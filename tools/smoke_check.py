@@ -9,9 +9,13 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_JOINTS = [
-    f"{finger}_joint_{number}"
-    for finger in ("thumb", "index", "middle", "ring", "little")
-    for number in (1, 2, 3)
+    *(f"sabre_finger_{finger}_{joint}_joint"
+      for finger in (1, 2, 3)
+      for joint in ("rotatory", "flexor_1", "flexor_2", "flexor_3")),
+    "sabre_thumb_rotatory_joint",
+    "sabre_thumb_flexor_1_joint",
+    "sabre_thumb_flexor_2_joint",
+    "sabre_thumb_flexor_3_joint",
 ]
 
 
@@ -42,6 +46,27 @@ def main() -> int:
         if f'"{joint}"' not in cpp_text:
             errors.append(f"C++ joint list is missing {joint}")
 
+    model_sources = "\n".join(
+        path.read_text()
+        for path in (ROOT / "src/sabre_hand_description/urdf").rglob("*.xacro")
+    )
+    mesh_paths = set(re.findall(
+        r"package://sabre_hand_description/([^\"]+\.STL)", model_sources
+    ))
+    if len(mesh_paths) != 11:
+        errors.append(f"expected 11 unique Allegro mesh references, found {len(mesh_paths)}")
+    for relative_mesh in mesh_paths:
+        if not (ROOT / "src/sabre_hand_description" / relative_mesh).is_file():
+            errors.append(f"missing mesh: {relative_mesh}")
+
+    for attribution in (
+        ROOT / "LICENSE",
+        ROOT / "third_party/allegro_hand/LICENSE",
+        ROOT / "third_party/allegro_hand/NOTICE",
+    ):
+        if not attribution.is_file():
+            errors.append(f"missing licence or attribution: {attribution.relative_to(ROOT)}")
+
     declared = re.findall(r'<name>([^<]+)</name>', "\n".join(p.read_text() for p in package_files))
     if len(set(declared)) != 3:
         errors.append("ROS package names are not unique")
@@ -52,7 +77,7 @@ def main() -> int:
             print(f"  - {error}")
         return 1
 
-    print("Smoke check passed: 3 packages, valid XML, and 15 aligned joints.")
+    print("Smoke check passed: 3 packages, valid XML, and 16 aligned joints.")
     return 0
 
 

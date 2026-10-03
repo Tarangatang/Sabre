@@ -1,0 +1,12 @@
+Allegro Hand visual meshes, reference screenshot, and adapted URDF/Xacro geometry
+Copyright 2024 PAL Robotics S.L.
+
+Source: https://github.com/pal-robotics/allegro_hand
+Upstream revision: main branch, retrieved 2026-10-03
+Licence: Apache License 2.0 (see LICENSE in this directory)
+
+SABRE modifications:
+- Changed package resource paths to sabre_hand_description.
+- Removed PAL-specific launch, PID, and utility dependencies.
+- Integrated the geometry with Gazebo Harmonic and gz_ros2_control.
+- Added a fixed simulation base and SABRE controller configuration.

@@ -10,43 +10,57 @@ namespace sabre_hand_control
 const std::array<std::string, kJointCount> & joint_names()
 {
   static const std::array<std::string, kJointCount> names = {
-    "thumb_joint_1", "thumb_joint_2", "thumb_joint_3",
-    "index_joint_1", "index_joint_2", "index_joint_3",
-    "middle_joint_1", "middle_joint_2", "middle_joint_3",
-    "ring_joint_1", "ring_joint_2", "ring_joint_3",
-    "little_joint_1", "little_joint_2", "little_joint_3"};
+    "sabre_finger_1_rotatory_joint", "sabre_finger_1_flexor_1_joint",
+    "sabre_finger_1_flexor_2_joint", "sabre_finger_1_flexor_3_joint",
+    "sabre_finger_2_rotatory_joint", "sabre_finger_2_flexor_1_joint",
+    "sabre_finger_2_flexor_2_joint", "sabre_finger_2_flexor_3_joint",
+    "sabre_finger_3_rotatory_joint", "sabre_finger_3_flexor_1_joint",
+    "sabre_finger_3_flexor_2_joint", "sabre_finger_3_flexor_3_joint",
+    "sabre_thumb_rotatory_joint", "sabre_thumb_flexor_1_joint",
+    "sabre_thumb_flexor_2_joint", "sabre_thumb_flexor_3_joint"};
   return names;
 }
 
 HandPosition named_pose(const std::string & name)
 {
   if (name == "open") {
-    return {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    return {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0, 0.0, 0.50, 0.0, 0.0, 0.0};
   }
   if (name == "fist") {
-    return {1.1, 1.25, 1.15, 1.25, 1.40, 1.25, 1.25, 1.40, 1.25,
-      1.25, 1.40, 1.25, 1.20, 1.35, 1.20};
+    return {0.0, 1.20, 1.30, 1.20, 0.0, 1.20, 1.30, 1.20,
+      0.0, 1.20, 1.30, 1.20, 1.10, 0.80, 1.10, 1.10};
   }
   if (name == "pinch") {
-    return {0.95, 1.05, 0.80, 0.90, 1.00, 0.75, 0.15, 0.20, 0.15,
-      0.15, 0.20, 0.15, 0.20, 0.25, 0.20};
+    return {-0.10, 0.75, 0.90, 0.65, 0.0, 0.10, 0.10, 0.10,
+      0.0, 0.10, 0.10, 0.10, 1.15, 0.55, 0.85, 0.75};
   }
   if (name == "point") {
-    return {0.85, 1.05, 0.90, 0.0, 0.0, 0.0, 1.25, 1.40, 1.25,
-      1.25, 1.40, 1.25, 1.20, 1.35, 1.20};
+    return {0.0, 0.0, 0.0, 0.0, 0.0, 1.20, 1.30, 1.20,
+      0.0, 1.20, 1.30, 1.20, 1.0, 0.70, 1.0, 0.90};
   }
   if (name == "relax") {
-    return {0.20, 0.25, 0.20, 0.18, 0.25, 0.20, 0.22, 0.30, 0.24,
-      0.25, 0.34, 0.28, 0.30, 0.40, 0.32};
+    return {0.0, 0.20, 0.25, 0.20, 0.0, 0.25, 0.30, 0.24,
+      0.0, 0.30, 0.36, 0.28, 0.65, 0.15, 0.25, 0.20};
   }
   throw std::invalid_argument("unknown hand pose: " + name);
 }
 
 HandPosition clamp_to_limits(const HandPosition & requested)
 {
+  static constexpr HandPosition lower = {
+    -0.47, -0.196, -0.174, -0.227,
+    -0.47, -0.196, -0.174, -0.227,
+    -0.47, -0.196, -0.174, -0.227,
+    0.463, -0.105, -0.189, -0.162};
+  static constexpr HandPosition upper = {
+    0.47, 1.61, 1.709, 1.618,
+    0.47, 1.61, 1.709, 1.618,
+    0.47, 1.61, 1.709, 1.618,
+    1.396, 1.163, 1.644, 1.719};
   HandPosition result = requested;
-  for (double & value : result) {
-    value = std::clamp(value, 0.0, 1.45);
+  for (std::size_t i = 0; i < result.size(); ++i) {
+    result[i] = std::clamp(result[i], lower[i], upper[i]);
   }
   return result;
 }
@@ -81,4 +95,3 @@ HandPosition merge_joint_command(
 }
 
 }  // namespace sabre_hand_control
-

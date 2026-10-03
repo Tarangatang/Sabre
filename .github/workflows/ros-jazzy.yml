@@ -1,0 +1,64 @@
+name: ROS 2 Jazzy validation
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-test-and-launch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out SABRE
+        uses: actions/checkout@v4
+
+      - name: Configure ROS 2 Jazzy repositories
+        uses: ros-tooling/setup-ros@v0.7
+        with:
+          required-ros-distributions: jazzy
+
+      - name: Install simulation dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            ros-jazzy-desktop \
+            ros-jazzy-ros-gz \
+            ros-jazzy-gz-ros2-control \
+            ros-jazzy-ros2-controllers \
+            ros-jazzy-xacro
+          source /opt/ros/jazzy/setup.bash
+          rosdep install --from-paths src --ignore-src -r -y --rosdistro jazzy
+
+      - name: Validate repository and Xacro
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          python3 tools/smoke_check.py
+          xacro src/sabre_hand_description/urdf/sabre_hand.urdf.xacro \
+            controller_config:=${{ github.workspace }}/src/sabre_hand_bringup/config/controllers.yaml \
+            -o /tmp/sabre_hand.urdf
+          check_urdf /tmp/sabre_hand.urdf
+
+      - name: Build and test
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          colcon build --symlink-install --event-handlers console_direct+
+          source install/setup.bash
+          colcon test --event-handlers console_direct+
+          colcon test-result --verbose
+
+      - name: Launch Gazebo headlessly and activate controllers
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          source install/setup.bash
+          set +e
+          timeout --signal=INT 45s ros2 launch sabre_hand_bringup simulation.launch.py \
+            gui:=false demo:=false 2>&1 | tee /tmp/sabre_launch.log
+          launch_status=${PIPESTATUS[0]}
+          set -e
+          if [[ "${launch_status}" -ne 0 && "${launch_status}" -ne 124 && "${launch_status}" -ne 130 ]]; then
+            exit "${launch_status}"
+          fi
+          grep -q "Configured and activated hand_controller" /tmp/sabre_launch.log
+          grep -q "Configured and activated joint_state_broadcaster" /tmp/sabre_launch.log
+

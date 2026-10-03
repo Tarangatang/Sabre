@@ -8,7 +8,7 @@
 namespace sabre_hand_control
 {
 
-constexpr std::size_t kJointCount = 15;
+constexpr std::size_t kJointCount = 16;
 using HandPosition = std::array<double, kJointCount>;
 
 const std::array<std::string, kJointCount> & joint_names();
@@ -27,4 +27,3 @@ HandPosition merge_joint_command(
   const HandPosition & current);
 
 }  // namespace sabre_hand_control
-
